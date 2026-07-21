@@ -16,7 +16,6 @@ try:
 
     df = pd.read_csv('online_retail_II.csv', encoding='latin1')
 
-
     df = df[df['Invoice'] != 'Invoice']
     df = df[df['StockCode'] != 'StockCode']
     df = df[df['Description'] != 'Description']
