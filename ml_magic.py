@@ -1,3 +1,5 @@
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
 import mysql.connector
 import pandas as pd
 import numpy as np
@@ -61,3 +63,33 @@ rfm.rename(columns={
 
 print(f"Crushed down to {len(rfm)} unique customers!")
 print(rfm.head())
+
+print('RFM stats')
+print(rfm.describe().apply(lambda s: s.apply('{0:.2f}'.format)))
+
+freq_cap = rfm['Frequency'].quantile(0.99)
+mon_cap = rfm['Monetary'].quantile(0.99)
+
+rfm_clean = rfm[(rfm['Frequency'] <= freq_cap) & (rfm['Monetary'] <= mon_cap)].copy()
+print(f"Removed extreme outliers. Customers remaining: {len(rfm_clean)}")
+
+scaler = StandardScaler()
+
+rfm_scaled = scaler.fit_transform(rfm_clean[['Recency', 'Frequency', 'Monetary']])
+print("Data is trimmed")
+
+kmeans = KMeans(n_clusters=4, random_state=42, n_init=10)
+
+kmeans.fit(rfm_scaled)
+
+rfm_clean['Cluster'] = kmeans.labels_
+
+print("Cluster complete")
+
+cluster_profiles = rfm_clean.groupby('Cluster').agg({
+    'Recency': 'mean',
+    'Frequency': 'mean',
+    'Monetary': ['mean', 'count'] 
+}).round(1)
+
+print(cluster_profiles)
