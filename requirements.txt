@@ -2,4 +2,3 @@ pandas
 numpy
 scikit-learn
 mysql-connector-python
-csv

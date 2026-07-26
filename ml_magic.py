@@ -6,7 +6,7 @@ import numpy as np
 
 try:
     connection = mysql.connector.connect(
-        host="127.0.0.1",
+        host="host.docker.internal",
         user="root",
         password="1234",  
         database="uci_projects",
@@ -93,3 +93,31 @@ cluster_profiles = rfm_clean.groupby('Cluster').agg({
 }).round(1)
 
 print(cluster_profiles)
+
+cutoff_date = pd.Timestamp('2011-09-30')
+
+feature_df = df[df['invoice_date'] <= cutoff_date].copy()
+target_df = df[df['invoice_date'] > cutoff_date].copy()
+
+print(f"Feature window: {feature_df['invoice_date'].min()} to {feature_df['invoice_date'].max()}")
+print(f"Target window:  {target_df['invoice_date'].min()} to {target_df['invoice_date'].max()}")
+print(f"Customers in feature window: {feature_df['customer_ID'].nunique()}")
+
+customer_features = feature_df.groupby('customer_ID').agg(
+    Recency=('invoice_date', lambda x: (cutoff_date - x.max()).days),
+    Frequency=('invoice', 'nunique'),
+    Monetary=('total_price', 'sum'),
+    TotalQuantity=('quantity', 'sum'),
+    UniqueProducts=('stock_code', 'nunique'),
+    FirstPurchase=('invoice_date', 'min'),
+    LastPurchase=('invoice_date', 'max')
+).reset_index()
+
+customer_features['Tenure'] = (customer_features['LastPurchase'] - customer_features['FirstPurchase']).dt.days
+customer_features['AvgOrderValue'] = customer_features['Monetary'] / customer_features['Frequency']
+customer_features['AvgItemsPerOrder'] = customer_features['TotalQuantity'] / customer_features['Frequency']
+
+customer_features = customer_features.replace([np.inf, -np.inf], 0).fillna(0)
+
+print(f"Engineered features for {len(customer_features)} customers")
+print(customer_features.head())
